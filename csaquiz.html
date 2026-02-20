@@ -3,19 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ServiceNow CSA 100問 練習システム</title>
+    <title>ServiceNow CSA  練習システム</title>
     <style>
         :root { --primary: #2c3e50; --success: #27ae60; --danger: #e74c3c; --accent: #3498db; --bg: #f0f2f5; }
-/* 【修改1】核心布局改为 flex */
+/* --- 修改点 1: 布局基础由固定改为弹性 (Flexbox) --- */
 body { 
             font-family: 'Segoe UI', Meiryo, sans-serif; 
             background: var(--bg); 
             margin: 0; 
-            display: flex; 
-            flex-direction: row; /* 横向排列（电脑端） */
-            height: 100vh; 
+            display: flex;       /* 启用 Flex 布局 */
+            flex-direction: row; /* PC端默认：左右排列 */
+            height: 100vh;      /* PC端固定高度，防止整体滚动 */
             overflow: hidden; 
         }
+
+        /* --- 修改点 2: 侧边栏宽度处理 --- */
+        #sidebar { 
+            width: 320px; 
+            background: white; 
+            border-right: 1px solid #ddd; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 20px; 
+            box-sizing: border-box;
+            flex-shrink: 0;      /* 防止侧边栏被右侧内容挤压 */
+        }
+
+        /* --- 修改点 3: 核心自适应栅格 (Grid) --- */
+        .grid-container { 
+            display: grid; 
+            /* 使用 auto-fill 和 minmax 实现自适应：
+               每个按钮最小 45px，根据容器宽度自动决定一行放几个 */
+            grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); 
+            gap: 8px; 
+            overflow-y: auto;    /* 列表过长时内部滚动 */
+            padding-right: 5px; 
+            flex-grow: 1;
+        }
+        
         /* サイドバー（問題一覧） */
         #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; padding: 20px; }
         #sidebar h3 { margin-top: 0; color: var(--primary); font-size: 1.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
@@ -48,35 +73,34 @@ body {
         .legend { margin-top: 20px; font-size: 0.8rem; display: flex; gap: 10px; }
         /* --- 【修改2】手机端适配媒体查询 --- */
         @media (max-width: 768px) {
-            body {
-                flex-direction: column; /* 纵向排列 */
-                overflow-y: auto; /* 手机端允许页面整体滚动 */
-                height: auto;
+            body { 
+                flex-direction: column; /* 手机端改为：上下排列 */
+                overflow-y: auto;       /* 手机端允许页面整体垂直滚动 */
+                height: auto; 
             }
 
-            #main-content {
-                order: 1; /* 题目显示在第一位 */
-                padding: 20px 10px;
-                overflow-y: visible; /* 禁用内部分层滚动 */
-                height: auto;
+            /* 题目区域 */
+            #main-content { 
+                order: 1;              /* 关键：强制题目显示在最上方 */
+                padding: 20px 15px; 
+                height: auto; 
+                overflow-y: visible;    /* 手机端禁用内部分层滚动，随页面滚动 */
             }
 
-            #sidebar {
-                order: 2; /* 列表显示在第二位（题目下方） */
-                width: 100%;
-                border-right: none;
-                border-top: 1px solid #ddd;
-                padding: 20px;
-                height: auto;
+            /* 列表区域（原侧边栏） */
+            #sidebar { 
+                order: 2;              /* 关键：强制列表显示在题目下方 */
+                width: 100%;           /* 宽度铺满屏幕 */
+                border-right: none;    /* 去掉右边框 */
+                border-top: 1px solid #ddd; /* 增加顶部分割线 */
+                height: auto; 
+                padding: 20px 15px;
             }
 
             .grid-container {
-                grid-template-columns: repeat(8, 1fr); /* 手机端列表按钮多排一点 */
-                max-height: 300px; /* 给下方列表一个最大高度防止过长 */
-            }
-
-            .quiz-card {
-                padding: 20px;
+                /* 手机端按钮稍微调小（minmax 40px），增加每行显示个数 */
+                grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); 
+                max-height: 400px;     /* 限制列表最大高度，防止题目太多拉不到底 */
             }
         }
     </style>
