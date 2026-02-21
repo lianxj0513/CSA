@@ -647,7 +647,15 @@ function checkAnswer() {
     };
 
     localStorage.setItem('csa_progress', JSON.stringify(userProgress));
+
+    // 2. 【新增】同步到云端 (Firebase)
+    // 这里的 userId 建议改成你自己的名字，比如 'lianxj'
+    if (window.saveProgress) {
+        window.saveProgress('lianxj', userProgress);
+    }
+    
     render();
+    
 }
 
 function updateScore() {
@@ -672,35 +680,45 @@ render();
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
   
-    // 这里的配置信息在你 Firebase 控制台的项目设置里找
     const firebaseConfig = {
-    apiKey: "AIzaSyAGC94bbSaOGdar4a0eKHyDEwjVU7xUuAU",
-    authDomain: "csa-quiz-158f9.firebaseapp.com",
-    databaseURL: "https://csa-quiz-158f9-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "csa-quiz-158f9",
-    storageBucket: "csa-quiz-158f9.firebasestorage.app",
-    messagingSenderId: "77895661401",
-    appId: "1:77895661401:web:437a2ffb58c5911371fe48",
-    measurementId: "G-HMX2WJ1MP9"
-  };
+        apiKey: "AIzaSyAGC94bbSaOGdar4a0eKHyDEwjVU7xUuAU",
+        authDomain: "csa-quiz-158f9.firebaseapp.com",
+        databaseURL: "https://csa-quiz-158f9-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "csa-quiz-158f9",
+        storageBucket: "csa-quiz-158f9.firebasestorage.app",
+        messagingSenderId: "77895661401",
+        appId: "1:77895661401:web:437a2ffb58c5911371fe48",
+        measurementId: "G-HMX2WJ1MP9"
+    };
   
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-  
-    // 保存数据：电脑做完题调用这个
-    function saveProgress(userId, data) {
-      set(ref(db, 'users/' + userId), {
-        quizData: data
-      });
+    const userId = "lianxj_csa"; // 建议固定一个 ID
+
+    // 暴露给全局调用
+    window.saveProgress = function(data) {
+      set(ref(db, 'users/' + userId), { quizData: data });
+    };
+
+    // 自动监听云端变化
+    const userRef = ref(db, 'users/' + userId);
+    onValue(userRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data && data.quizData) {
+        console.log("检测到云端进度，正在同步...");
+        
+        // 将云端数据合并到当前页面的变量中
+        // 注意：假设你的 userProgress 是在全局定义的
+        window.userProgress = data.quizData; 
+        
+        // 更新本地存储，防止下次断网失效
+        localStorage.setItem('csa_progress', JSON.stringify(window.userProgress));
+        
+        // 重新渲染画面，让正确/错误的颜色显示出来
+        if (typeof render === "function") {
+            render(); 
+            updateScore(); // 更新正答率
+        }
     }
-  
-    // 读取数据：手机打开时调用这个
-    function loadProgress(userId) {
-      const userRef = ref(db, 'users/' + userId);
-      onValue(userRef, (snapshot) => {
-        const data = snapshot.val();
-        console.log("读取到的同步数据：", data);
-        // 在这里写逻辑：把数据渲染到你的 HTML 题目上
-      });
-    }
-  </script>
+    });
+</script>
