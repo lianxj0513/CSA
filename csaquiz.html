@@ -667,3 +667,40 @@ render();
 </script>
 </body>
 </html>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  
+    // 这里的配置信息在你 Firebase 控制台的项目设置里找
+    const firebaseConfig = {
+    apiKey: "AIzaSyAGC94bbSaOGdar4a0eKHyDEwjVU7xUuAU",
+    authDomain: "csa-quiz-158f9.firebaseapp.com",
+    databaseURL: "https://csa-quiz-158f9-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "csa-quiz-158f9",
+    storageBucket: "csa-quiz-158f9.firebasestorage.app",
+    messagingSenderId: "77895661401",
+    appId: "1:77895661401:web:437a2ffb58c5911371fe48",
+    measurementId: "G-HMX2WJ1MP9"
+  };
+  
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+  
+    // 保存数据：电脑做完题调用这个
+    function saveProgress(userId, data) {
+      set(ref(db, 'users/' + userId), {
+        quizData: data
+      });
+    }
+  
+    // 读取数据：手机打开时调用这个
+    function loadProgress(userId) {
+      const userRef = ref(db, 'users/' + userId);
+      onValue(userRef, (snapshot) => {
+        const data = snapshot.val();
+        console.log("读取到的同步数据：", data);
+        // 在这里写逻辑：把数据渲染到你的 HTML 题目上
+      });
+    }
+  </script>
