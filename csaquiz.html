@@ -3,21 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ServiceNow CSA  練習システム</title>
+    <title>ServiceNow CSA 練習システム</title>
     <style>
         :root { --primary: #2c3e50; --success: #27ae60; --danger: #e74c3c; --accent: #3498db; --bg: #f0f2f5; }
-/* --- 修改点 1: 布局基础由固定改为弹性 (Flexbox) --- */
-body { 
+        body { 
             font-family: 'Segoe UI', Meiryo, sans-serif; 
             background: var(--bg); 
             margin: 0; 
-            display: flex;       /* 启用 Flex 布局 */
-            flex-direction: row; /* PC端默认：左右排列 */
-            height: 100vh;      /* PC端固定高度，防止整体滚动 */
+            display: flex;       
+            flex-direction: row; 
+            height: 100vh;      
             overflow: hidden; 
         }
 
-        /* --- 修改点 2: 侧边栏宽度处理 --- */
         #sidebar { 
             width: 320px; 
             background: white; 
@@ -26,32 +24,29 @@ body {
             flex-direction: column; 
             padding: 20px; 
             box-sizing: border-box;
-            flex-shrink: 0;      /* 防止侧边栏被右侧内容挤压 */
+            flex-shrink: 0;      
         }
 
-        /* --- 修改点 3: 核心自适应栅格 (Grid) --- */
         .grid-container { 
             display: grid; 
-            /* 使用 auto-fill 和 minmax 实现自适应：
-               每个按钮最小 45px，根据容器宽度自动决定一行放几个 */
             grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); 
             gap: 8px; 
-            overflow-y: auto;    /* 列表过长时内部滚动 */
+            overflow-y: auto;    
             padding-right: 5px; 
             flex-grow: 1;
+            margin-top: 15px;
         }
         
-        /* サイドバー（問題一覧） */
-        #sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; padding: 20px; }
         #sidebar h3 { margin-top: 0; color: var(--primary); font-size: 1.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
-        .grid-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; overflow-y: auto; padding-right: 5px; }
         .grid-item { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; transition: 0.2s; }
         .grid-item:hover { background: #ddd; }
         .grid-item.active { outline: 3px solid var(--accent); z-index: 1; }
         .grid-item.done-correct { background: var(--success); color: white; }
         .grid-item.done-wrong { background: var(--danger); color: white; }
 
-        /* メインコンテンツ */
+        .mode-btn { margin-top:10px; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; transition: 0.3s; background: var(--danger); }
+        .mode-btn.normal { background: var(--accent); }
+
         #main-content { flex: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
         .quiz-card { background: white; max-width: 800px; width: 100%; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .header { display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: bold; color: #666; }
@@ -70,47 +65,35 @@ body {
         .btn-submit { background: #673ab7; color: white; }
         .btn-next { background: var(--accent); color: white; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .legend { margin-top: 20px; font-size: 0.8rem; display: flex; gap: 10px; }
-        /* --- 【修改2】手机端适配媒体查询 --- */
+        .legend { margin-top: 20px; font-size: 0.8rem; display: flex; gap: 10px; flex-wrap: wrap; }
+        
         @media (max-width: 768px) {
-            body { 
-                flex-direction: column; /* 手机端改为：上下排列 */
-                overflow-y: auto;       /* 手机端允许页面整体垂直滚动 */
-                height: auto; 
-            }
-
-            /* 题目区域 */
-            #main-content { 
-                order: 1;              /* 关键：强制题目显示在最上方 */
-                padding: 20px 15px; 
-                height: auto; 
-                overflow-y: visible;    /* 手机端禁用内部分层滚动，随页面滚动 */
-            }
-
-            /* 列表区域（原侧边栏） */
-            #sidebar { 
-                order: 2;              /* 关键：强制列表显示在题目下方 */
-                width: 100%;           /* 宽度铺满屏幕 */
-                border-right: none;    /* 去掉右边框 */
-                border-top: 1px solid #ddd; /* 增加顶部分割线 */
-                height: auto; 
-                padding: 20px 15px;
-            }
-
-            .grid-container {
-                /* 手机端按钮稍微调小（minmax 40px），增加每行显示个数 */
-                grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); 
-                max-height: 400px;     /* 限制列表最大高度，防止题目太多拉不到底 */
-            }
+            body { flex-direction: column; overflow-y: auto; height: auto; }
+            #main-content { order: 1; padding: 20px 15px; height: auto; overflow-y: visible; }
+            #sidebar { order: 2; width: 100%; border-right: none; border-top: 1px solid #ddd; height: auto; padding: 20px 15px; }
+            .grid-container { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); max-height: 400px; }
         }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h3> CSA 100題 一覧</h3>
+    <h3 id="sidebar-title"> CSA 100題 一覧</h3>
+    
+    <button id="mode-toggle-btn" class="mode-btn" onclick="toggleMode()">🔴 錯題モードに切替</button>
+
+    <div style="margin-top: 15px; font-size: 0.85rem; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ddd;">
+        <label for="threshold-select" style="font-weight:bold; color:var(--primary);">🎯 錯題解除の必要正解数：</label>
+        <select id="threshold-select" onchange="updateThreshold()" style="margin-top:5px; width:100%; padding:6px; border-radius:4px; border:1px solid #ccc;">
+            <option value="1">1回正解で削除</option>
+            <option value="2">2回連続正解で削除</option>
+            <option value="3">3回連続正解で削除</option>
+            <option value="5">5回連続正解で削除</option>
+        </select>
+    </div>
+
     <div class="grid-container" id="num-grid"></div>
-    <div class="legend">
+    <div class="legend" id="legend-box">
         <span>⬜ 未回答</span>
         <span style="color:var(--success)">🟩 正解</span>
         <span style="color:var(--danger)">🟥 不正解</span>
@@ -119,26 +102,12 @@ body {
 </div>
 
 <div id="main-content">
-    <div class="quiz-card">
-        <div class="header">
-            <span id="current-num">Question 1</span>
-            <span id="score-info">正答率: 0%</span>
+    <div class="quiz-card" id="quiz-card-container">
         </div>
-        <div id="q-type-label" style="margin-bottom:10px; font-weight:bold; color:var(--accent);"></div>
-        <div class="q-text" id="q-text"></div>
-        <div class="options" id="opt-container"></div>
-        <div class="feedback" id="fb-box"></div>
-        <div class="controls">
-            <button class="btn-prev" id="prev-btn" onclick="goPrev()">前へ</button>
-            <button class="btn-submit" id="submit-btn" onclick="checkAnswer()">提出</button>
-            <button class="btn-next" id="next-btn" onclick="goNext()">次へ</button>
-        </div>
-    </div>
 </div>
 
 <script>
-// --- データ領域 ---
-// 前回の54問＋残りの100問分をここに入れてください
+// --- 【注意】这里的数据被我折叠了，请把你原本完整的 400多道题复制回这个数组中 ---
 const quizData = [
     { id: 1, q: "サービスカタログには、次のどのコンポーネントが含まれますか？", opts: ["オーダーガイド、為替レート、カレンダー", "オーダーガイド、カタログアイテム、インターセプター", "カタログアイテム、アセット契約、タスクアンケート", "レコードプロデューサー、オーダーガイド、カタログアイテム"], ans: "D", desc: "サービスカタログの主要な構成要素は、注文可能な「カタログアイテム」、関連アイテムをまとめる「オーダーガイド」、およびタスクを作成する「レコードプロデューサー」です。" },
     { id: 2, q: "インポート時にフィールドセットを「Coalesce（結合）」設定した場合、次のどのステートメントが適用されますか？", opts: ["一致するレコードが見つかった場合、既存のレコードがインポート情報で更新される", "一致するレコードが見つからない場合、システムはトランスフォームマップを作成しない", "一致するレコードが見つかった場合、システムは新しいレコードを作成する", "一致するレコードが見つからない場合、既存のレコードがインポート情報で更新される"], ans: "A", desc: "Coalesce（合致）フィールドを使用すると、既存データとの照合が行われます。一致すれば更新（Update）、一致しなければ新規作成（Insert）されます。" },
@@ -347,7 +316,7 @@ const quizData = [
     { id: 206, q: "インポートデータの送信先テーブルと項目の対応を定義するモジュールは？ (Which module defines where imported data is sent in ServiceNow?)", opts: ["変換 (Transform)", "スキーママップ (Schema Map)", "トランスフォームマップ (Transform Map)", "インポートマップ"], ans: "C", desc: "Transform Maps map source data to target table fields." },
     { id: 207, q: "フォームヘッダーでテンプレート機能にアクセスするためのアイコンは？ (Which icon accesses the template feature in the form header?)", opts: ["スタンプ (Stamp)", "ページ (Page)", "その他 (...) (More Options)", "クリップ (Paperclip)"], ans: "C", desc: "Templates are found under the 'More Options' (three dots) menu in UI16." },
     { id: 208, q: "データピルピッカーでドットウォークするために使用するキーは？ (Which key is used to dot-walk fields in the data pill picker?)", opts: ["Plus, Minus", "Ctrl <, Ctrl >", "Arrows", "Ctrl C, Ctrl V", "Shift F4, Shift F5"], ans: "C", desc: "Arrow keys or icons allow you to expand referenced fields for dot-walking." },
-    { id: 151, q: "アクセス制御 (ACL) はどのような順序で評価されますか？ (In what order are Access Controls evaluated?)", opts: ["フィールドレベル 最も ― 具体的から最も一般的へ；その後、テーブルレベル 最も ― 具体的から最も一般的へ", "フィールドレベル（最も一般的から最も具体的へ）、次に行レベル（最も具体的から最も一般的へ）", "表レベル（最も具体的から最も一般的へ）;その後、項目レベル（最も具体的から最も一般的へ）", "テーブルレベル 最も ― 具体的なものから最も一般的なものへ、次に行レベル 最も具体的なものから最も一般的なものへ"], ans: "C", desc: "Table-level ACLs are checked first; if passed, then Field-level ACLs are checked." },
+    { id: 209, q: "アクセス制御 (ACL) はどのような順序で評価されますか？ (In what order are Access Controls evaluated?)", opts: ["フィールドレベル 最も ― 具体的から最も一般的へ；その後、テーブルレベル 最も ― 具体的から最も一般的へ", "フィールドレベル（最も一般的から最も具体的へ）、次に行レベル（最も具体的から最も一般的へ）", "表レベル（最も具体的から最も一般的へ）;その後、項目レベル（最も具体的から最も一般的へ）", "テーブルレベル 最も ― 具体的なものから最も一般的なものへ、次に行レベル 最も具体的なものから最も一般的なものへ"], ans: "C", desc: "Table-level ACLs are checked first; if passed, then Field-level ACLs are checked." },
     { id: 210, q: "フロー内でガイドや指示にアクセスできるリソースは？ (Which resource provides guides and instructions within Flow Designer?)", opts: ["ドキュメント (Docs)", "コミュニティ (Community)", "ヘルプパネル (Help Panel / ?)", "ウィキ (Wiki)"], ans: "C", desc: "The Help Panel (?) provides context-sensitive help and tours." },
     { id: 211, q: "レポートデザイナーで計算や集計を指定するセクションは？ (Which Report Designer section specifies calculations and aggregations?)", opts: ["スタイル (Style)", "グループ化 (Group)", "設定 (Configure)", "書式 (Format)", "データ (Data)"], ans: "C", desc: "The 'Configure' tab is used to set the aggregation (sum, avg) and other settings." },
     { id: 212, q: "お気に入りのアイコンと色を変更するボタンは？ (Which icon allows you to edit your Favorites?)", opts: ["時計 (Clock)", "鉛筆 (Pencil)", "三角形 (Triangle)", "星 (Star)"], ans: "B", desc: "The Pencil icon at the bottom of the Favorites menu enters edit mode." },
@@ -413,7 +382,8 @@ const quizData = [
     { id: 267, q: "リストコレクタからフォームに追加できる関連リストの例は？ (Select three examples of related lists that can be added to a form.)", opts: ["問題=親 (Problem=Parent)", "人事異動→親 (HR Case->Parent)", "タスク→親 (Task->Parent)", "障害→タスク番号 (Incident->Task)", "リリースフェーズ==親 (Phase==Parent)"], ans: "ACE", desc: "Related lists show records on other tables that reference the current record." },
     { id: 268, q: "アップグレード完了時にメールを送信する設定方法は？ (How can an admin configure email alerts for upgrade completion?)", opts: ["システムログ更新 (Update System Log)", "通知モジュールの更新 (Update Notification module)", "スクリプト作成 (Client Script)", "ビジネスルール (Business Rule)"], ans: "B", desc: "The 'System Upgrade' email notification can be modified to include recipients." },
     { id: 269, q: "インフラ特定、追跡のための製品を 3 つ選択してください。 (Select 3 products to identify and track infrastructure components.)", opts: ["財務管理 (Finance)", "ディスカバリー (Discovery)", "構成管理 (CMDB)", "サービスマッピング (Service Mapping)", "パフォーマンス分析 (Performance Analytics)"], ans: "BCD", desc: "Discovery, CMDB, and Service Mapping are core ITOM/infrastructure tools." },
-    { id: 270, q: "実装において、以下のテーブルが相互に拡張されています：Incident テーブルは Task テーブルから拡張されており、Super Incident テーブルは Incident テーブルから拡張されています。この状況において、親(Parent)、子(Child)、および基本(Base)テーブルに該当するものはどれですか？（5つ選択）", opts: ["A. Super Incident テーブルは親テーブルである (Super Incident table is a Parent table)", "B. Incident テーブルは子テーブルである (Incident table is a Child table)", "C. Super Incident テーブルは基本テーブルである (Super Incident table is a Base table)", "D. Incident テーブルは基本テーブルである (Incident table is a Base table)", "E. Task テーブルは子テーブルである (Task table is a Child table)", "F. Incident テーブルは親テーブルである (Incident table is a Parent table)", "G. Super Incident テーブルは子テーブルである (Super Incident table is a Child table)", "H. Task テーブルは親テーブルである (Task table is a Parent table)", "I. Task テーブルは基本テーブルである (Task table is a Base table)"], ans: "BFGHI", desc: "Taskは他のテーブルから拡張されていないため「基本（Base）」かつIncidentの親です。IncidentはTaskの子であり、同時にSuper Incidentの親でもあります。Super IncidentはIncidentの子となります。" },  { id: 271, q: "ウィジェットを用いて時間経過の改善点を特定する機能は？ (Which feature identifies areas for improvement via time-based visualizations?)", opts: ["定期レポート", "パフォーマンス分析 (Performance Analytics)", "分析レポート", "報告"], ans: "B", desc: "Performance Analytics tracks trends and KPIs over time for continuous improvement." },
+    { id: 270, q: "実装において、以下のテーブルが相互に拡張されています：Incident テーブルは Task テーブルから拡張されており、Super Incident テーブルは Incident テーブルから拡張されています。この状況において、親(Parent)、子(Child)、および基本(Base)テーブルに該当するものはどれですか？（5つ選択）", opts: ["A. Super Incident テーブルは親テーブルである (Super Incident table is a Parent table)", "B. Incident テーブルは子テーブルである (Incident table is a Child table)", "C. Super Incident テーブルは基本テーブルである (Super Incident table is a Base table)", "D. Incident テーブルは基本テーブルである (Incident table is a Base table)", "E. Task テーブルは子テーブルである (Task table is a Child table)", "F. Incident テーブルは親テーブルである (Incident table is a Parent table)", "G. Super Incident テーブルは子テーブルである (Super Incident table is a Child table)", "H. Task テーブルは親テーブルである (Task table is a Parent table)", "I. Task テーブルは基本テーブルである (Task table is a Base table)"], ans: "BFGHI", desc: "Taskは他のテーブルから拡張されていないため「基本（Base）」かつIncidentの親です。IncidentはTaskの子であり、同時にSuper Incidentの親でもあります。Super IncidentはIncidentの子となります。" },  
+    { id: 271, q: "ウィジェットを用いて時間経過の改善点を特定する機能は？ (Which feature identifies areas for improvement via time-based visualizations?)", opts: ["定期レポート", "パフォーマンス分析 (Performance Analytics)", "分析レポート", "報告"], ans: "B", desc: "Performance Analytics tracks trends and KPIs over time for continuous improvement." },
     { id: 272, q: "Web ブラウザ上で実行される ServiceNow スクリプトは？ (Which script type runs in the web browser?)", opts: ["サーバー (Server)", "データベース (DB)", "クライアント (Client)", "ローカル (Local)"], ans: "C", desc: "Client Scripts allow for browser-side validation and manipulation." },
     { id: 273, q: "インポートのターゲットテーブル（データの移動先）を選択する際、どのテーブルを選択できますか？（3つ選択）", opts: ["ServiceNow外のテーブル (Tables outside of ServiceNow)", "グローバルスコープ内のテーブル (Tables within the global scope)", "ドットウォークを使用した関連テーブル (Related tables, using Dot Walk)", "他のアプリケーションへの書き込みアクセスを許可しているテーブル (Tables which allow write access to other applications)", "既存のアプリケーションスコープ内のテーブル (Tables within the existing application scope)"], ans: "BDE", desc: "インポートセットのターゲットとして指定できるのは、ServiceNowインスタンス内に存在するテーブルのみです。具体的には、現在のアプリケーションスコープ内のテーブル、グローバルスコープのテーブル、およびアプリケーション間アクセス（Application Access）設定で「書き込み」が許可されている他スコープのテーブルが対象となります。"},
     { id: 274, q: "アクセス制御 (ACL) で権限を設定できる 3 つの方法は？ (Select 3 ways to set permissions in an Access Control definition.)", opts: ["条件 (Condition)", "ロール (Roles)", "CRUD", "スクリプト (Script)", "グループ (Groups)"], ans: "ABC", desc: "ACLs use Roles, Conditions, and Scripts to determine access." },
@@ -550,70 +520,204 @@ const quizData = [
 { id: 407, q: "Now PlatformにおけるForm Builderの主な目的は何ですか？", opts: ["プラットフォーム内に新しいテーブルを作成する (To create new tables within the platform)", "データテーブルから分析レポートを生成する (To generate analytical reports from data tables)", "システム設定と権限を構成する (To configure system settings and permissions)", "レコードの入力に使用されるフォームを編集する (To edit forms used for populating records)"], ans: "D", desc: "Form Builderは、レコードを作成・表示する際のフォーム画面を編集するためのツールです。"}
 ];
 
-// --- ロジック領域 ---
-let currentIdx = 0;
-// ユーザーの回答記録： { index: { userAns: "A", status: "correct" | "wrong" } }
+
+
+// 【データ初期化】
 let userProgress = JSON.parse(localStorage.getItem('csa_progress')) || {};
+let mistakesData = JSON.parse(localStorage.getItem('csa_mistakes')) || {};
+
+// 【新增】读取保存的解除阈值，默认是 1
+let removeThreshold = parseInt(localStorage.getItem('csa_remove_threshold')) || 1;
+document.getElementById('threshold-select').value = removeThreshold;
+
+for (let key in userProgress) {
+    if (userProgress[key].status === 'wrong' && mistakesData[key] === undefined) {
+        mistakesData[key] = 0; 
+    }
+}
+localStorage.setItem('csa_mistakes', JSON.stringify(mistakesData));
+
+// 【状態管理】
+let isMistakeMode = false;
+let currentList = [];       
+let listPointer = 0;        
 let selectedCodes = [];
+let currentAttemptResult = null; 
+
+// 【新增】更新选项阈值的函数
+function updateThreshold() {
+    removeThreshold = parseInt(document.getElementById('threshold-select').value, 10);
+    localStorage.setItem('csa_remove_threshold', removeThreshold);
+}
+
+function initMode() {
+    refreshList();
+}
+
+function toggleMode() {
+    isMistakeMode = !isMistakeMode;
+    const btn = document.getElementById('mode-toggle-btn');
+    const title = document.getElementById('sidebar-title');
+    const legend = document.getElementById('legend-box');
+
+    if (isMistakeMode) {
+        btn.innerText = "🟢 通常モードに戻る";
+        btn.className = "mode-btn normal";
+        title.innerText = "錯題（間違えた問題）一覧";
+        legend.innerHTML = `<span>⬜ 未回答</span> <span style="color:var(--success)">🟩 修正済</span> <span style="color:var(--danger)">🟥 再不正解</span>`;
+    } else {
+        btn.innerText = "🔴 錯題モードに切替";
+        btn.className = "mode-btn";
+        title.innerText = "CSA 100題 一覧";
+        legend.innerHTML = `<span>⬜ 未回答</span> <span style="color:var(--success)">🟩 正解</span> <span style="color:var(--danger)">🟥 不正解</span>`;
+    }
+    refreshList();
+}
+
+function refreshList() {
+    currentList = [];
+    if (isMistakeMode) {
+        currentList = Object.keys(mistakesData).map(Number).sort((a, b) => a - b);
+    } else {
+        for (let i = 0; i < quizData.length; i++) currentList.push(i);
+    }
+    listPointer = 0;
+    currentAttemptResult = null;
+    initGrid();
+    render();
+}
 
 function initGrid() {
     const grid = document.getElementById('num-grid');
     grid.innerHTML = '';
-    quizData.forEach((_, i) => {
+    currentList.forEach((realIdx, displayIdx) => {
         const item = document.createElement('div');
         item.className = 'grid-item';
-        item.innerText = i + 1;
-        item.id = `grid-item-${i}`;
-        item.onclick = () => jumpTo(i);
-        updateGridStatus(i, item);
+        item.innerText = realIdx + 1; 
+        item.id = `grid-item-${realIdx}`;
+        item.onclick = () => {
+            currentAttemptResult = null;
+            listPointer = displayIdx;
+            render();
+        };
+        updateGridStatus(realIdx, item);
         grid.appendChild(item);
     });
 }
 
-function updateGridStatus(idx, element = null) {
-    const el = element || document.getElementById(`grid-item-${idx}`);
+function updateGridStatus(realIdx, element = null) {
+    const el = element || document.getElementById(`grid-item-${realIdx}`);
     if (!el) return;
     el.classList.remove('done-correct', 'done-wrong', 'active');
-    if (idx === currentIdx) el.classList.add('active');
     
-    if (userProgress[idx]) {
-        if (userProgress[idx].status === 'correct') el.classList.add('done-correct');
-        else el.classList.add('done-wrong');
+    if (currentList.length > 0 && realIdx === currentList[listPointer]) {
+        el.classList.add('active');
+    }
+    
+    if (isMistakeMode) {
+        if (!mistakesData.hasOwnProperty(realIdx)) {
+            el.classList.add('done-correct'); 
+        } else if (currentAttemptResult && realIdx === currentList[listPointer]) {
+            el.classList.add(currentAttemptResult.status === 'correct' ? 'done-correct' : 'done-wrong');
+        } else {
+            el.classList.add('done-wrong');
+        }
+    } else {
+        if (userProgress[realIdx]) {
+            if (userProgress[realIdx].status === 'correct') el.classList.add('done-correct');
+            else el.classList.add('done-wrong');
+        }
     }
 }
 
 function render() {
-    const q = quizData[currentIdx];
-    const isMulti = q.ans.length > 1;
-    const history = userProgress[currentIdx];
+    const mainContent = document.getElementById('quiz-card-container');
+    
+    if (currentList.length === 0) {
+        mainContent.innerHTML = `
+            <div style="text-align:center; padding: 50px 0;">
+                <h2 style="color:var(--success); font-size: 2rem;">🎉 素晴らしい！</h2>
+                <p style="color:#666; font-size:1.1rem;">現在、記録されている間違えた問題はありません。</p>
+            </div>`;
+        return;
+    }
 
-    document.getElementById('current-num').innerText = `Question ${currentIdx + 1} / ${quizData.length}`;
+    if (!document.getElementById('q-text')) {
+        mainContent.innerHTML = `
+            <div class="header">
+                <span id="current-num"></span>
+                <span id="score-info"></span>
+            </div>
+            <div id="q-type-label" style="margin-bottom:10px; font-weight:bold; color:var(--accent);"></div>
+            <div class="q-text" id="q-text"></div>
+            <div class="options" id="opt-container"></div>
+            <div class="feedback" id="fb-box"></div>
+            <div class="controls">
+                <button class="btn-prev" id="prev-btn" onclick="goPrev()">前へ</button>
+                <button class="btn-submit" id="submit-btn" onclick="checkAnswer()">提出</button>
+                <button class="btn-next" id="next-btn" onclick="goNext()">次へ</button>
+            </div>`;
+    }
+
+    const realIdx = currentList[listPointer];
+    const q = quizData[realIdx];
+    const isMulti = q.ans.length > 1;
+
+    document.getElementById('current-num').innerText = `Question ${realIdx + 1} (${listPointer + 1}/${currentList.length})`;
     document.getElementById('q-type-label').innerText = isMulti ? `【多選択肢：${q.ans.length}つ選択】` : `【単一選択】`;
     document.getElementById('q-text').innerText = q.q;
-    document.getElementById('fb-box').style.display = 'none';
-    document.getElementById('submit-btn').disabled = history ? true : false;
+    
+    const fbBox = document.getElementById('fb-box');
+    fbBox.style.display = 'none';
+    
+    let hasAnswered = false;
+    let displayData = null;
+
+    if (!isMistakeMode && userProgress[realIdx]) {
+        hasAnswered = true;
+        displayData = userProgress[realIdx];
+    } else if (isMistakeMode && currentAttemptResult) {
+        hasAnswered = true;
+        displayData = currentAttemptResult;
+    }
+
+    document.getElementById('submit-btn').disabled = hasAnswered;
     
     const container = document.getElementById('opt-container');
     container.innerHTML = '';
     selectedCodes = [];
 
-    // 選択肢を描画
     q.opts.forEach((text, i) => {
         const code = String.fromCharCode(65 + i);
         const div = document.createElement('div');
         div.className = 'option';
         div.innerText = text;
         
-        // 過去の回答がある場合の状態表示
-        if (history) {
+        if (hasAnswered) {
             if (q.ans.includes(code)) div.classList.add('correct-ans');
-            else if (history.userAns.includes(code)) div.classList.add('wrong-ans');
-            document.getElementById('fb-box').style.display = 'block';
-            document.getElementById('fb-box').innerHTML = `<b>【正解: ${q.ans}】</b><br>${q.desc}`;
+            else if (displayData.userAns.includes(code)) div.classList.add('wrong-ans');
+            
+            fbBox.style.display = 'block';
+            let fbHTML = `<b>【正解: ${q.ans}】</b><br>${q.desc}`;
+            
+            if (isMistakeMode) {
+                if (displayData.status === 'correct') {
+                    // 【修改】反馈文案显示还需答对几次
+                    let remaining = removeThreshold - (mistakesData[realIdx] || 0);
+                    if (remaining <= 0) {
+                        fbHTML = `<div style="color:var(--success); font-weight:bold; margin-bottom:10px;">✅ 正解です！錯題リストから削除されました。</div>` + fbHTML;
+                    } else {
+                        fbHTML = `<div style="color:var(--success); font-weight:bold; margin-bottom:10px;">✅ 正解です！あと ${remaining} 回連続で正解するとリストから削除されます。</div>` + fbHTML;
+                    }
+                } else {
+                    fbHTML = `<div style="color:var(--danger); font-weight:bold; margin-bottom:10px;">❌ 不正解。もう一度復習しましょう！（連続正解カウントがリセットされました）</div>` + fbHTML;
+                }
+            }
+            fbBox.innerHTML = fbHTML;
         }
 
         div.onclick = () => {
-            if (userProgress[currentIdx]) return;
+            if (hasAnswered) return; 
             if (isMulti) {
                 div.classList.toggle('selected');
                 const idx = selectedCodes.indexOf(code);
@@ -628,49 +732,88 @@ function render() {
         container.appendChild(div);
     });
 
-    // グリッドの更新
-    quizData.forEach((_, i) => updateGridStatus(i));
+    currentList.forEach(idx => updateGridStatus(idx));
     updateScore();
 }
 
 function checkAnswer() {
     if (selectedCodes.length === 0) { alert("選択肢を選んでください。"); return; }
     
-    const q = quizData[currentIdx];
+    const realIdx = currentList[listPointer];
+    const q = quizData[realIdx];
     const userStr = selectedCodes.sort().join('');
     const correctStr = q.ans.split('').sort().join('');
     const isCorrect = userStr === correctStr;
 
-    userProgress[currentIdx] = {
-        userAns: userStr,
-        status: isCorrect ? 'correct' : 'wrong'
-    };
+    if (!isMistakeMode) {
+        userProgress[realIdx] = { userAns: userStr, status: isCorrect ? 'correct' : 'wrong' };
+        localStorage.setItem('csa_progress', JSON.stringify(userProgress));
+        
+        if (!isCorrect) {
+            mistakesData[realIdx] = 0;
+            localStorage.setItem('csa_mistakes', JSON.stringify(mistakesData));
+        }
 
-    localStorage.setItem('csa_progress', JSON.stringify(userProgress));
-
-    // 【修正这里】去掉 'lianxj'，只传 userProgress
-    if (typeof window.saveProgress === "function") {
-        window.saveProgress(userProgress); 
+    } else {
+        currentAttemptResult = { userAns: userStr, status: isCorrect ? 'correct' : 'wrong' };
+        
+        if (isCorrect) {
+            mistakesData[realIdx] = (mistakesData[realIdx] || 0) + 1;
+            // 【修改】使用动态阈值判断是否删除
+            if (mistakesData[realIdx] >= removeThreshold) {
+                delete mistakesData[realIdx];
+                if (userProgress[realIdx]) {
+                    userProgress[realIdx].status = 'correct';
+                    userProgress[realIdx].userAns = userStr;
+                    localStorage.setItem('csa_progress', JSON.stringify(userProgress));
+                }
+            }
+        } else {
+            mistakesData[realIdx] = 0; 
+        }
+        localStorage.setItem('csa_mistakes', JSON.stringify(mistakesData));
     }
     
     render();
-    
 }
 
 function updateScore() {
-    const total = Object.keys(userProgress).length;
-    if (total === 0) return;
-    const correctCount = Object.values(userProgress).filter(p => p.status === 'correct').length;
-    document.getElementById('score-info').innerText = `正答率: ${Math.round((correctCount/total)*100)}% (${correctCount}/${total})`;
+    if (isMistakeMode) {
+        document.getElementById('score-info').innerText = `残り錯題数: ${Object.keys(mistakesData).length}`;
+    } else {
+        const total = Object.keys(userProgress).length;
+        if (total === 0) return;
+        const correctCount = Object.values(userProgress).filter(p => p.status === 'correct').length;
+        document.getElementById('score-info').innerText = `正答率: ${Math.round((correctCount/total)*100)}% (${correctCount}/${total})`;
+    }
 }
 
-function goNext() { if (currentIdx < quizData.length - 1) { currentIdx++; render(); } }
-function goPrev() { if (currentIdx > 0) { currentIdx--; render(); } }
-function jumpTo(i) { currentIdx = i; render(); }
-function resetAll() { if(confirm("進捗をリセットしますか？")) { localStorage.clear(); location.reload(); } }
+function goNext() { 
+    currentAttemptResult = null; 
+    if (listPointer < currentList.length - 1) { 
+        listPointer++; 
+        render(); 
+    } else if (isMistakeMode) {
+        refreshList();
+    }
+}
 
-initGrid();
-render();
+function goPrev() { 
+    currentAttemptResult = null;
+    if (listPointer > 0) { 
+        listPointer--; 
+        render(); 
+    } 
+}
+
+function resetAll() { 
+    if(confirm("進捗と錯題履歴を完全にリセットしますか？")) { 
+        localStorage.clear(); 
+        location.reload(); 
+    } 
+}
+
+initMode();
 </script>
 </body>
 </html>
