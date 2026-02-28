@@ -854,24 +854,40 @@ initMode();
     const userId = "lianxj"; 
 
     // 【新增】同步锁：如果没从云端读到数据，就不允许覆盖云端
-    let isCloudLoaded = false;
+    l// 1. 在脚本开头定义一个“锁”
+let isDataLoadedFromCloud = false; 
 
-    window.saveProgress = function(progressData, mistakesData, threshold) {
-        // 如果云端还没加载完成，拒绝保存，防止空数据覆盖云端
-        if (!isCloudLoaded) {
-            console.warn("云端数据尚未就绪，拒绝保存操作");
-            return;
-        }
+// 2. 修改保存函数，增加判断
+window.saveProgress = function(data) {
+    // 【关键】如果没有从云端加载过数据，绝对不准保存（防止空数据覆盖云端）
+    if (!isDataLoadedFromCloud) {
+        console.warn("云端数据尚未同步，拒绝保存操作");
+        return;
+    }
 
-        set(ref(db, 'users/' + userId), {
-            quizData: progressData || {},
-            mistakesData: mistakesData || {},
-            removeThreshold: threshold || 1,
-            lastUpdate: new Date().getTime()
-        }).then(() => {
-            console.log("云端同步成功");
-        });
-    };
+    set(ref(db, 'users/' + userId), {
+        quizData: data,
+        timestamp: new Date().getTime()
+    });
+};
+
+// 3. 修改监听函数
+onValue(userRef, (snapshot) => {
+    const cloudData = snapshot.val();
+    
+    // 只要接收到云端反馈（无论是数据还是 null），就解锁保存功能
+    isDataLoadedFromCloud = true; 
+
+    if (cloudData && cloudData.quizData) {
+        console.log("已同步云端记录");
+        window.userProgress = cloudData.quizData;
+        localStorage.setItem('csa_progress', JSON.stringify(window.userProgress));
+        
+        // 刷新 UI
+        updateGridStatus(); 
+        updateScore();
+    }
+});
 
     const userRef = ref(db, 'users/' + userId);
     
