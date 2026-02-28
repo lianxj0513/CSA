@@ -835,9 +835,10 @@ initMode();
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
   
     const firebaseConfig = {
+        // ... 你的配置保持不变 ...
         apiKey: "AIzaSyAGC94bbSaOGdar4a0eKHyDEwjVU7xUuAU",
         authDomain: "csa-quiz-158f9.firebaseapp.com",
         databaseURL: "https://csa-quiz-158f9-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -852,53 +853,65 @@ initMode();
     const db = getDatabase(app);
     const userId = "lianxj"; 
 
-    // --- 修改点 1: 增强保存函数，支持同步错题本和阈值 ---
+    // 【新增】同步锁：如果没从云端读到数据，就不允许覆盖云端
+    let isCloudLoaded = false;
+
     window.saveProgress = function(progressData, mistakesData, threshold) {
+        // 如果云端还没加载完成，拒绝保存，防止空数据覆盖云端
+        if (!isCloudLoaded) {
+            console.warn("云端数据尚未就绪，拒绝保存操作");
+            return;
+        }
+
         set(ref(db, 'users/' + userId), {
-            // 如果数据为空，传 null 可以在云端彻底删除该节点，实现真正的重置
-            quizData: (progressData && Object.keys(progressData).length > 0) ? progressData : null,
-            mistakesData: (mistakesData && Object.keys(mistakesData).length > 0) ? mistakesData : null,
+            quizData: progressData || {},
+            mistakesData: mistakesData || {},
             removeThreshold: threshold || 1,
-            timestamp: new Date().getTime()
+            lastUpdate: new Date().getTime()
         }).then(() => {
             console.log("云端同步成功");
-        }).catch((error) => {
-            console.error("云端同步失败:", error);
         });
     };
 
-    // --- 修改点 2: 增强监听函数，确保本地变量被正确覆盖 ---
     const userRef = ref(db, 'users/' + userId);
+    
+    // 使用 onValue 实时监听
     onValue(userRef, (snapshot) => {
         const cloudData = snapshot.val();
-        
-        // 即使云端是空的 (cloudData 为 null)，也要处理，用于实现多端同时重置
-        console.log("检测到云端变化，同步中...");
-        
-        // 1. 同步普通进度
-        window.userProgress = (cloudData && cloudData.quizData) ? cloudData.quizData : {};
-        localStorage.setItem('csa_progress', JSON.stringify(window.userProgress));
+        console.log("接收到云端快照:", cloudData);
 
-        // 2. 同步错题本 (重要！)
-        window.mistakesData = (cloudData && cloudData.mistakesData) ? cloudData.mistakesData : {};
-        localStorage.setItem('csa_mistakes', JSON.stringify(window.mistakesData));
+        if (cloudData) {
+            // 只有第一次收到数据时，标记为已加载
+            isCloudLoaded = true;
 
-        // 3. 同步阈值设置
-        if (cloudData && cloudData.removeThreshold) {
-            window.removeThreshold = cloudData.removeThreshold;
-            localStorage.setItem('csa_remove_threshold', window.removeThreshold);
-            const ts = document.getElementById('threshold-select');
-            if (ts) ts.value = window.removeThreshold;
-        }
+            // 1. 同步普通进度
+            if (cloudData.quizData) {
+                window.userProgress = cloudData.quizData;
+                localStorage.setItem('csa_progress', JSON.stringify(window.userProgress));
+            }
 
-        // 4. 触发页面重绘
-        // 注意：这里调用的是 refreshList，因为它会重新计算错题模式和普通模式的列表
-        if (typeof window.refreshList === "function") {
-            window.refreshList(); 
-        } else if (typeof window.render === "function") {
-            window.render();
-            if (typeof window.updateScore === "function") window.updateScore();
-            if (typeof window.initGrid === "function") window.initGrid();
+            // 2. 同步错题本
+            if (cloudData.mistakesData) {
+                window.mistakesData = cloudData.mistakesData;
+                localStorage.setItem('csa_mistakes', JSON.stringify(window.mistakesData));
+            }
+
+            // 3. 同步阈值
+            if (cloudData.removeThreshold) {
+                window.removeThreshold = cloudData.removeThreshold;
+                localStorage.setItem('csa_remove_threshold', window.removeThreshold);
+                const ts = document.getElementById('threshold-select');
+                if (ts) ts.value = window.removeThreshold;
+            }
+
+            // 4. 强制刷新 UI
+            if (typeof window.refreshList === "function") {
+                window.refreshList(); 
+            }
+        } else {
+            // 如果云端完全没数据（新用户），也需要解锁
+            isCloudLoaded = true;
+            console.log("云端为空，已初始化新进度");
         }
     });
 </script>
