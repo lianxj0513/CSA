@@ -548,6 +548,11 @@ let currentAttemptResult = null;
 function updateThreshold() {
     removeThreshold = parseInt(document.getElementById('threshold-select').value, 10);
     localStorage.setItem('csa_remove_threshold', removeThreshold);
+    
+    // 🔄 【新增】同步阈值到云端
+    if (typeof window.saveProgressToCloud === "function") {
+        setTimeout(() => window.saveProgressToCloud(), 100);
+    }
 }
 
 function initMode() {
@@ -774,6 +779,11 @@ function checkAnswer() {
         localStorage.setItem('csa_mistakes', JSON.stringify(mistakesData));
     }
     
+    // 🔄 【新增】自动同步到云端
+    if (typeof window.saveProgressToCloud === "function") {
+        setTimeout(() => window.saveProgressToCloud(), 100);
+    }
+    
     render();
 }
 
@@ -807,18 +817,18 @@ function goPrev() {
 }
 
 function resetAll() { 
-    if(confirm("确定要清空所有记录吗？此操作将同步至所有设备。")) { 
+    if(confirm("確定要清空所有記錄嗎？此操作將同步至所有設備。")) { 
         // 1. 清空本地变量
         userProgress = {};
         mistakesData = {};
+        removeThreshold = 1;
         
         // 2. 清空本地缓存
         localStorage.clear(); 
         
-        // 3. 【关键】通知云端也清空（传入空对象或 null）
-        if (typeof window.saveProgress === "function") {
-            // 这里传入空对象，告诉云端要把数据抹除
-            window.saveProgress({}, {}, 1); 
+        // 3. 🔄 【新增】通知云端也清空（同步空数据）
+        if (typeof window.saveProgressToCloud === "function") {
+            setTimeout(() => window.saveProgressToCloud(), 100); 
         }
         
         // 4. 刷新页面确保状态彻底重置
@@ -829,16 +839,26 @@ function resetAll() {
 }
 
 initMode();
+
+// 🔄 【新增】初始化云同步
+setTimeout(async () => {
+    try {
+        console.log("⏳ [初始化] 正在连接云端同步系统...");
+        await window.initializeCloudSync?.();
+        console.log("✅ [初始化] 云端同步系统已就绪");
+    } catch (error) {
+        console.error("⚠️ [初始化] 云同步初始化失败:", error);
+    }
+}, 300);
+
 </script>
-</body>
-</html>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-  
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getDatabase, ref, set, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
     const firebaseConfig = {
-        // ... 你的配置保持不变 ...
         apiKey: "AIzaSyAGC94bbSaOGdar4a0eKHyDEwjVU7xUuAU",
         authDomain: "csa-quiz-158f9.firebaseapp.com",
         databaseURL: "https://csa-quiz-158f9-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -848,86 +868,119 @@ initMode();
         appId: "1:77895661401:web:437a2ffb58c5911371fe48",
         measurementId: "G-HMX2WJ1MP9"
     };
-  
+
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getDatabase(app);
-    const userId = "lianxj"; 
 
-    // 【新增】同步锁：如果没从云端读到数据，就不允许覆盖云端
-    l// 1. 在脚本开头定义一个“锁”
-let isDataLoadedFromCloud = false; 
+    let currentUserId = null;
+    let isCloudReady = false;
+    let lastSyncTime = 0;
+    const SYNC_DEBOUNCE = 1000;
 
-// 2. 修改保存函数，增加判断
-window.saveProgress = function(data) {
-    // 【关键】如果没有从云端加载过数据，绝对不准保存（防止空数据覆盖云端）
-    if (!isDataLoadedFromCloud) {
-        console.warn("云端数据尚未同步，拒绝保存操作");
-        return;
-    }
+    window.initializeCloudSync = async function() {
+        return new Promise((resolve) => {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    console.log("✅ 用户已认证:", currentUserId);
+                    await loadCloudData();
+                    startCloudListener();
+                    isCloudReady = true;
+                    resolve(true);
+                } else {
+                    signInAnonymously(auth)
+                        .then(() => {
+                            console.log("✅ 匿名登录成功");
+                            resolve(true);
+                        })
+                        .catch(error => {
+                            console.error("❌ 认证失败:", error);
+                            resolve(false);
+                        });
+                }
+            });
+        });
+    };
 
-    set(ref(db, 'users/' + userId), {
-        quizData: data,
-        timestamp: new Date().getTime()
-    });
-};
-
-// 3. 修改监听函数
-onValue(userRef, (snapshot) => {
-    const cloudData = snapshot.val();
-    
-    // 只要接收到云端反馈（无论是数据还是 null），就解锁保存功能
-    isDataLoadedFromCloud = true; 
-
-    if (cloudData && cloudData.quizData) {
-        console.log("已同步云端记录");
-        window.userProgress = cloudData.quizData;
-        localStorage.setItem('csa_progress', JSON.stringify(window.userProgress));
-        
-        // 刷新 UI
-        updateGridStatus(); 
-        updateScore();
-    }
-});
-
-    const userRef = ref(db, 'users/' + userId);
-    
-    // 使用 onValue 实时监听
-    onValue(userRef, (snapshot) => {
-        const cloudData = snapshot.val();
-        console.log("接收到云端快照:", cloudData);
-
-        if (cloudData) {
-            // 只有第一次收到数据时，标记为已加载
-            isCloudLoaded = true;
-
-            // 1. 同步普通进度
-            if (cloudData.quizData) {
-                window.userProgress = cloudData.quizData;
-                localStorage.setItem('csa_progress', JSON.stringify(window.userProgress));
+    async function loadCloudData() {
+        try {
+            const userRef = ref(db, `users/${currentUserId}`);
+            const snapshot = await get(userRef);
+            
+            if (snapshot.exists()) {
+                const cloudData = snapshot.val();
+                console.log("📥 从云端加载数据");
+                
+                if (cloudData.userProgress) {
+                    window.userProgress = cloudData.userProgress;
+                    localStorage.setItem('csa_progress', JSON.stringify(window.userProgress));
+                }
+                if (cloudData.mistakesData) {
+                    window.mistakesData = cloudData.mistakesData;
+                    localStorage.setItem('csa_mistakes', JSON.stringify(window.mistakesData));
+                }
+                if (cloudData.removeThreshold) {
+                    window.removeThreshold = cloudData.removeThreshold;
+                    localStorage.setItem('csa_remove_threshold', window.removeThreshold);
+                    const select = document.getElementById('threshold-select');
+                    if (select) select.value = window.removeThreshold;
+                }
+            } else {
+                console.log("📭 云端为新用户");
             }
-
-            // 2. 同步错题本
-            if (cloudData.mistakesData) {
-                window.mistakesData = cloudData.mistakesData;
-                localStorage.setItem('csa_mistakes', JSON.stringify(window.mistakesData));
-            }
-
-            // 3. 同步阈值
-            if (cloudData.removeThreshold) {
-                window.removeThreshold = cloudData.removeThreshold;
-                localStorage.setItem('csa_remove_threshold', window.removeThreshold);
-                const ts = document.getElementById('threshold-select');
-                if (ts) ts.value = window.removeThreshold;
-            }
-
-            // 4. 强制刷新 UI
-            if (typeof window.refreshList === "function") {
-                window.refreshList(); 
-            }
-        } else {
-            // 如果云端完全没数据（新用户），也需要解锁
-            isCloudLoaded = true;
-            console.log("云端为空，已初始化新进度");
+        } catch (error) {
+            console.error("❌ 加载云端数据失败:", error);
         }
-    });
+    }
+
+    function startCloudListener() {
+        const userRef = ref(db, `users/${currentUserId}`);
+        onValue(userRef, (snapshot) => {
+            const cloudData = snapshot.val();
+            if (!cloudData) return;
+            
+            const localStr = JSON.stringify(window.userProgress || {});
+            const cloudStr = JSON.stringify(cloudData.userProgress || {});
+            
+            if (localStr !== cloudStr) {
+                console.log("🔄 检测到其他设备更新");
+                window.userProgress = cloudData.userProgress || {};
+                window.mistakesData = cloudData.mistakesData || {};
+                window.removeThreshold = cloudData.removeThreshold || 1;
+                
+                localStorage.setItem('csa_progress', JSON.stringify(window.userProgress));
+                localStorage.setItem('csa_mistakes', JSON.stringify(window.mistakesData));
+                localStorage.setItem('csa_remove_threshold', window.removeThreshold);
+                
+                if (typeof window.render === 'function') window.render();
+                console.log("✅ 本地数据已更新");
+            }
+        });
+    }
+
+    window.saveProgressToCloud = function() {
+        if (!currentUserId || !isCloudReady) return;
+        
+        const now = Date.now();
+        if (now - lastSyncTime < SYNC_DEBOUNCE) return;
+        lastSyncTime = now;
+
+        try {
+            const userRef = ref(db, `users/${currentUserId}`);
+            const updates = {
+                userProgress: window.userProgress || {},
+                mistakesData: window.mistakesData || {},
+                removeThreshold: window.removeThreshold || 1,
+                lastUpdated: new Date().toISOString(),
+                timestamp: Date.now()
+            };
+            set(userRef, updates);
+            console.log("✅ 数据已同步至云端");
+        } catch (error) {
+            console.error("❌ 同步失败:", error);
+        }
+    };
+</script>
+  
 </script>
