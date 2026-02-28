@@ -807,9 +807,24 @@ function goPrev() {
 }
 
 function resetAll() { 
-    if(confirm("進捗と錯題履歴を完全にリセットしますか？")) { 
+    if(confirm("确定要清空所有记录吗？此操作将同步至所有设备。")) { 
+        // 1. 清空本地变量
+        userProgress = {};
+        mistakesData = {};
+        
+        // 2. 清空本地缓存
         localStorage.clear(); 
-        location.reload(); 
+        
+        // 3. 【关键】通知云端也清空（传入空对象或 null）
+        if (typeof window.saveProgress === "function") {
+            // 这里传入空对象，告诉云端要把数据抹除
+            window.saveProgress({}, {}, 1); 
+        }
+        
+        // 4. 刷新页面确保状态彻底重置
+        setTimeout(() => {
+            location.reload(); 
+        }, 500); // 稍微延迟，确保云端写入指令已发出
     } 
 }
 
@@ -835,35 +850,55 @@ initMode();
   
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const userId = "lianxj"; // 你的唯一ID
+    const userId = "lianxj"; 
 
-// 定义全局保存函数
-window.saveProgress = function(data) {
+    // --- 修改点 1: 增强保存函数，支持同步错题本和阈值 ---
+    window.saveProgress = function(progressData, mistakesData, threshold) {
         set(ref(db, 'users/' + userId), {
-            quizData: data,
+            // 如果数据为空，传 null 可以在云端彻底删除该节点，实现真正的重置
+            quizData: (progressData && Object.keys(progressData).length > 0) ? progressData : null,
+            mistakesData: (mistakesData && Object.keys(mistakesData).length > 0) ? mistakesData : null,
+            removeThreshold: threshold || 1,
             timestamp: new Date().getTime()
+        }).then(() => {
+            console.log("云端同步成功");
+        }).catch((error) => {
+            console.error("云端同步失败:", error);
         });
     };
 
-    // 【重要】自动监听云端：只要数据变了（无论是在电脑还是手机上改的），就刷新页面
+    // --- 修改点 2: 增强监听函数，确保本地变量被正确覆盖 ---
     const userRef = ref(db, 'users/' + userId);
     onValue(userRef, (snapshot) => {
         const cloudData = snapshot.val();
-        if (cloudData && cloudData.quizData) {
-            console.log("检测到云端有新进度，同步中...");
-            
-            // 1. 把云端数据赋值给你的全局变量
-            window.userProgress = cloudData.quizData;
-            
-            // 2. 更新本地缓存，防止离线
-            localStorage.setItem('csa_progress', JSON.stringify(window.userProgress));
-            
-            // 3. 【触发刷新】重新运行你原本的渲染函数，让变色和进度条生效
-            if (typeof render === "function") {
-                render(); 
-                updateScore();
-                if (typeof initGrid === "function") initGrid(); // 让下方数字格子也变色
-            }
+        
+        // 即使云端是空的 (cloudData 为 null)，也要处理，用于实现多端同时重置
+        console.log("检测到云端变化，同步中...");
+        
+        // 1. 同步普通进度
+        window.userProgress = (cloudData && cloudData.quizData) ? cloudData.quizData : {};
+        localStorage.setItem('csa_progress', JSON.stringify(window.userProgress));
+
+        // 2. 同步错题本 (重要！)
+        window.mistakesData = (cloudData && cloudData.mistakesData) ? cloudData.mistakesData : {};
+        localStorage.setItem('csa_mistakes', JSON.stringify(window.mistakesData));
+
+        // 3. 同步阈值设置
+        if (cloudData && cloudData.removeThreshold) {
+            window.removeThreshold = cloudData.removeThreshold;
+            localStorage.setItem('csa_remove_threshold', window.removeThreshold);
+            const ts = document.getElementById('threshold-select');
+            if (ts) ts.value = window.removeThreshold;
+        }
+
+        // 4. 触发页面重绘
+        // 注意：这里调用的是 refreshList，因为它会重新计算错题模式和普通模式的列表
+        if (typeof window.refreshList === "function") {
+            window.refreshList(); 
+        } else if (typeof window.render === "function") {
+            window.render();
+            if (typeof window.updateScore === "function") window.updateScore();
+            if (typeof window.initGrid === "function") window.initGrid();
         }
     });
 </script>
